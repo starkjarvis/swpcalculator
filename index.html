@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWP Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            text-align: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        .result p {
+            font-size: 18px;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>SWP Calculator</h1>
+
+        <!-- Input Form -->
+        <label for="totalInvested">Total Invested Amount (₹):</label>
+        <input type="number" id="totalInvested" placeholder="Enter total invested amount" />
+
+        <label for="xirr">Expected XIRR (%):</label>
+        <input type="number" id="xirr" placeholder="Enter expected XIRR percentage" />
+
+        <label for="swpAmount">Monthly SWP Amount (₹):</label>
+        <input type="number" id="swpAmount" placeholder="Enter monthly SWP amount" />
+
+        <label for="topUp">Top-Up Percentage (% per Year):</label>
+        <input type="number" id="topUp" placeholder="Enter top-up percentage" />
+
+        <label for="years">Total Investment Years:</label>
+        <input type="number" id="years" placeholder="Enter number of years" />
+
+        <label for="currentAge">Current Age:</label>
+        <input type="number" id="currentAge" placeholder="Enter current age" />
+
+        <button id="calculateBtn">Calculate</button>
+
+        <!-- Result Display -->
+        <div id="result" class="result" style="display:none;">
+            <p id="remainingAmount"></p>
+            <p id="runsOutMessage"></p>
+        </div>
+
+        <!-- Results Table -->
+        <div id="tableContainer" style="display:none;">
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>SWP Amount (₹) Per Month</th>
+                        <th>Age</th>
+                        <th>Remaining Invested Amount (₹)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Add event listener to the Calculate button after the page is loaded
+        document.getElementById('calculateBtn').addEventListener('click', calculateSWP);
+
+        function calculateSWP() {
+            // Get values from input fields
+            let totalInvested = parseFloat(document.getElementById('totalInvested').value);
+            let xirrPercentage = parseFloat(document.getElementById('xirr').value);
+            let swpAmount = parseFloat(document.getElementById('swpAmount').value);
+            let topUpPercentage = parseFloat(document.getElementById('topUp').value);
+            let years = parseInt(document.getElementById('years').value);
+            let currentAge = parseInt(document.getElementById('currentAge').value);
+
+            // Validate inputs
+            if (isNaN(totalInvested) || isNaN(xirrPercentage) || isNaN(swpAmount) || isNaN(topUpPercentage) || isNaN(years) || isNaN(currentAge)) {
+                alert('Please fill in all fields with valid values.');
+                return;
+            }
+
+            let remainingAmount = totalInvested; // Starting with the total invested amount
+            let monthlyXIRRRate = (xirrPercentage / 100) / 12; // Monthly XIRR rate
+            let totalMonths = years * 12; // Total number of months for the investment period
+            let moneyRunsOutMonth = -1; // Store the month when the money runs out (if it happens before the total months)
+
+            let tableRows = []; // Array to store rows for the results table
+            let currentAgeAtYear = currentAge; // User's age at the start
+
+            // Loop through each year
+            for (let year = 1; year <= years; year++) {
+                let currentYearRemainingAmount = remainingAmount;
+
+                // Monthly loop for compounding XIRR and SWP deduction
+                for (let month = 1; month <= 12; month++) {
+                    // Apply the XIRR return (compounded monthly)
+                    currentYearRemainingAmount *= (1 + monthlyXIRRRate);
+                    // Subtract the SWP withdrawal for the month
+                    currentYearRemainingAmount -= swpAmount;
+                }
+
+                // Add the row for this year
+                tableRows.push({
+                    year: year,
+                    swpAmount: swpAmount.toFixed(2), // Showing the monthly SWP amount
+                    age: currentAgeAtYear,
+                    remainingAmount: currentYearRemainingAmount.toFixed(2),
+                });
+
+                // Update the remaining amount and the user's age
+                remainingAmount = currentYearRemainingAmount;
+                currentAgeAtYear += 1;
+
+                // Increase the SWP amount at the end of the year based on the top-up percentage
+                swpAmount += swpAmount * (topUpPercentage / 100);
+
+                // If the money runs out, we break the loop
+                if (remainingAmount <= 0 && moneyRunsOutMonth === -1) {
+                    moneyRunsOutMonth = year;
+                    break;
+                }
+            }
+
+            // Calculate the final remaining amount and when the money will run out
+            let remainingAmountMessage = document.getElementById('remainingAmount');
+            let runsOutMessage = document.getElementById('runsOutMessage');
+            let resultDiv = document.getElementById('result');
+            let tableContainer = document.getElementById('tableContainer');
+            let resultsTable = document.getElementById('resultsTable').getElementsByTagName('tbody')[0];
+
+            // Display the remaining amount after the total investment years
+            if (moneyRunsOutMonth === -1) {
+                remainingAmountMessage.textContent = `Remaining amount after ${years} years: ₹${remainingAmount.toFixed(2)}`;
+                runsOutMessage.textContent = `Money did not run out within ${years} years.`;
+            } else {
+                remainingAmountMessage.textContent = `Remaining amount after ${years} years: ₹${remainingAmount.toFixed(2)}`;
+                runsOutMessage.textContent = `Money will run out at the age of ${currentAgeAtYear}.`;
+            }
+
+            resultDiv.style.display = 'block';
+            tableContainer.style.display = 'block';
+
+            // Clear the table before adding new rows
+            resultsTable.innerHTML = "";
+
+            // Populate the table with the rows
+            tableRows.forEach(row => {
+                let newRow = resultsTable.insertRow();
+                newRow.insertCell(0).textContent = row.year;
+                newRow.insertCell(1).textContent = row.swpAmount; // Monthly SWP Amount
+                newRow.insertCell(2).textContent = row.age;
+                newRow.insertCell(3).textContent = row.remainingAmount;
+            });
+        }
+    </script>
+
+</body>
+</html>
